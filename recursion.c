@@ -11,7 +11,7 @@ int main()
 
     printf("The numbers are: ");
 
-    // sizeof(array) / sizeof(one of the element of the array) = calculate the number of elements in the array
+    // sizeof(array) / sizeof(one of the elements of the array) = calculate the number of elements in the array
     print_array(p, sizeof(numbers) / sizeof(numbers[0]));
 
     return 0;
