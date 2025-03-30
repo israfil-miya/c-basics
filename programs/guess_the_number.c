@@ -3,21 +3,25 @@
 #include <time.h>
 #include <stdlib.h>
 
-int main() {
+int main()
+{
     const int MIN = 0;
     const int MAX = 100;
 
     int guess, guesses, answer;
     char response[4];
 
+    // srand() is used to seed the random number generator
     srand(time(0));
     answer = (rand() % MAX) + MIN; // random number between MIN and MAX
 
     printf("Guess a number between %d and %d: ", MIN, MAX);
-    do {
+    do
+    {
         scanf("%d", &guess);
         strcpy(response, guess > answer ? "high" : "low");
-        if (guess != answer) {
+        if (guess != answer)
+        {
             printf("Wrong, that number is too %s!\n", response);
             printf("Guess again: ");
         }
@@ -25,7 +29,6 @@ int main() {
         guesses++;
 
     } while (guess != answer);
-
 
     printf("\nCORRECT, WELL DONE!\n");
     printf("Guesses: %d\n", guesses);

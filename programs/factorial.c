@@ -1,21 +1,22 @@
 #include <stdio.h>
-#include "comps/fact.h"
-#include "comps/fact.c"
+#include "include/factorial_recursion.c"
 
-int main() {
+int main()
+{
     int factorial_of;
-    
+
+    printf("Enter a number to calculate its factorial: ");
     scanf("%d", &factorial_of);
-    
-    if (factorial_of < 0) {
+
+    if (factorial_of < 0)
+    {
         printf("Factorial can't be calculated for negative numbers.\n");
         return 1;
     }
-    
+
     long long int factorial = fact(factorial_of);
-    
+
     printf("%d! = %lld\n", factorial_of, factorial);
-    
+
     return 0;
 }
-
