@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "include/factorial_recursion.c"
+#include "include/factorial_recursion.h"
 
 int main()
 {
