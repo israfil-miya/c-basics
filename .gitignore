@@ -1,2 +1,4 @@
 *.exe
 *.csv
+*.o
+*.out
