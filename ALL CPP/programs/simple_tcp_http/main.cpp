@@ -2,12 +2,14 @@
 #include <cstring>
 #include <iostream>
 #include <netinet/in.h>
+#include <span>
 #include <sys/socket.h>
+#include <thread>
 #include <unistd.h>
 
 using namespace std;
 
-void handleClient(int clientSocket, const struct sockaddr_in &clientAddress) {
+void handleClient(int clientSocket, struct sockaddr_in clientAddress) {
   // Convert client's binary IP address to readable format
   char clientIp[INET_ADDRSTRLEN];
   inet_ntop(AF_INET, &clientAddress.sin_addr, clientIp, INET_ADDRSTRLEN);
@@ -15,25 +17,32 @@ void handleClient(int clientSocket, const struct sockaddr_in &clientAddress) {
   cout << "Success: Client connected from " << clientIp << ":"
        << ntohs(clientAddress.sin_port) << endl;
 
+  std::this_thread::sleep_for(5s);
+
   // Receive data from client
-  string requestData;
   char streamBuffer[4096];
+  span<char> bufferSpan(streamBuffer);
   ssize_t bytesReceived = 0;
+
+  string requestData;
+  requestData.reserve(2 * 4096);
 
   while (true) {
     bytesReceived =
-        recv(clientSocket, streamBuffer, sizeof(streamBuffer) - 1, 0);
+        recv(clientSocket, bufferSpan.data(), bufferSpan.size() - 1, 0);
 
     if (bytesReceived <= 0) {
       break; // Error or client disconnect
     }
+
+    span<char> receivedSpan = bufferSpan.subspan(0, bytesReceived);
 
     // Null-terminate the buffer
     streamBuffer[bytesReceived] = '\0';
 
     // cout << "Received buffer: " << streamBuffer << endl; // Not necessarily
     // the complete message
-    requestData += streamBuffer;
+    requestData.append(receivedSpan.data(), receivedSpan.size());
 
     // For handling HTTP protocol communication specifically
     if (requestData.find("\r\n\r\n") != std::string::npos) {
@@ -139,7 +148,12 @@ int main() {
       continue;
     }
 
-    handleClient(clientSocket, clientAddress);
+    // handleClient(clientSocket, clientAddress);
+    // we run each client in it's own thread, so the main listening thread
+    // isn't blcoked when serving a client, and can always take new client
+    // requests
+    thread clientThread(handleClient, clientSocket, clientAddress);
+    clientThread.detach();
   }
 
   // Just for good practice (cleanup) purpose,
