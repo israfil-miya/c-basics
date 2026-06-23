@@ -1,13 +1,31 @@
 #include <arpa/inet.h>
 #include <cstring>
+#include <fcntl.h>
 #include <iostream>
 #include <netinet/in.h>
 #include <span>
+#include <sys/epoll.h>
 #include <sys/socket.h>
-#include <thread>
 #include <unistd.h>
+#include <unordered_map>
 
 using namespace std;
+
+bool setNonBlocking(int fd) {
+  // Get the current status flags of the file descriptor
+  int flags = fcntl(fd, F_GETFL, 0);
+  if (flags == -1) {
+    cerr << "Error: fcntl(F_GETFL) failed: " << strerror(errno) << endl;
+    return false;
+  }
+
+  // Set the flags back with the O_NONBLOCK bit turned ON
+  if (fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1) {
+    cerr << "Error: fcntl(F_SETFL) failed: " << strerror(errno) << endl;
+    return false;
+  }
+  return true;
+}
 
 void handleClient(int clientSocket, struct sockaddr_in clientAddress) {
   // Convert client's binary IP address to readable format
@@ -17,36 +35,32 @@ void handleClient(int clientSocket, struct sockaddr_in clientAddress) {
   cout << "Success: Client connected from " << clientIp << ":"
        << ntohs(clientAddress.sin_port) << endl;
 
-  std::this_thread::sleep_for(5s);
-
-  // Receive data from client
+  // Accumulate HTTP request headers in a loop
   char streamBuffer[4096];
   span<char> bufferSpan(streamBuffer);
   ssize_t bytesReceived = 0;
 
+  // Reserve capacity to minimize heap reallocations
   string requestData;
   requestData.reserve(2 * 4096);
 
   while (true) {
-    bytesReceived =
-        recv(clientSocket, bufferSpan.data(), bufferSpan.size() - 1, 0);
+    // Read from socket
+    bytesReceived = recv(clientSocket, bufferSpan.data(), bufferSpan.size(), 0);
 
     if (bytesReceived <= 0) {
-      break; // Error or client disconnect
+      break; // Disconnect or socket error
     }
 
+    // View of the newly received bytes
     span<char> receivedSpan = bufferSpan.subspan(0, bytesReceived);
 
-    // Null-terminate the buffer
-    streamBuffer[bytesReceived] = '\0';
-
-    // cout << "Received buffer: " << streamBuffer << endl; // Not necessarily
-    // the complete message
+    // Append to request data
     requestData.append(receivedSpan.data(), receivedSpan.size());
 
-    // For handling HTTP protocol communication specifically
+    // Stop reading once the complete header is received
     if (requestData.find("\r\n\r\n") != std::string::npos) {
-      break; // We got the full request headers, so we stop reading
+      break;
     }
   }
 
@@ -100,6 +114,36 @@ int main() {
 
   cout << "Success: TCP socket created with file descriptor: " << tcpSocket
        << endl;
+
+  // Make the listening socket non-blocking
+  if (!setNonBlocking(tcpSocket)) {
+    close(tcpSocket);
+    return 1;
+  }
+
+  // initialize epoll
+  int epollFd = epoll_create1(0);
+  if (epollFd == -1) {
+    cerr << "Error: Failed to create epoll instance: " << strerror(errno)
+         << endl;
+    close(tcpSocket);
+    return 1;
+  }
+
+  // register the listening socket with epoll
+  struct epoll_event event;
+  memset(&event, 0, sizeof(event));
+
+  event.events = EPOLLIN;    // EPOLLIN = watch for incoming data/connections
+  event.data.fd = tcpSocket; // store the fd in the event data, so we know who
+                             // triggered it later
+
+  if (epoll_ctl(epollFd, EPOLL_CTL_ADD, tcpSocket, &event) == -1) {
+    cerr << "Error: epoll_ctl failed: " << strerror(errno) << endl;
+    close(epollFd);
+    close(tcpSocket);
+    return 1;
+  }
 
   // Allow reuse of the port immediately after server exits, helpful for dev
   int opt = 1;
