@@ -1,0 +1,64 @@
+# Prerequisites
+*.d
+
+# Compiled Object files
+*.slo
+*.lo
+*.o
+*.obj
+
+# Precompiled Headers
+*.gch
+*.pch
+
+# Compiled Dynamic libraries
+*.so
+*.dylib
+*.dll
+
+# Fortran module files
+*.mod
+*.smod
+
+# Compiled Static libraries
+*.lai
+*.la
+*.a
+*.lib
+
+# Executables
+adms_server
+adms_server.exe
+*.out
+*.app
+
+# CMake build output
+/build/
+/CMakeFiles/
+CMakeCache.txt
+CMakeFiles/
+CMakeLists.txt.user
+cmake_install.cmake
+Makefile
+targets
+
+# IDEs and editors
+.idea/
+.vscode/
+.clangd/
+.cache/
+compile_commands.json
+*.swp
+*~
+
+# Application environment configuration (sensitive credentials)
+.env
+
+# Application logs output folder
+/logs/
+*.log
+*.jsonl
+
+# OS files
+.DS_Store
+Thumbs.db
